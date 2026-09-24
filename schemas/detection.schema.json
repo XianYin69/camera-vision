@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "detection",
+  "description": "camera-vision 识别结果统一契约（recognize.py / ocr.py 输出；camera.py 输出 saved/cameras/removed 另计）",
+  "type": "object",
+  "required": ["schema", "task", "count"],
+  "properties": {
+    "schema": {"const": "detection"},
+    "task": {"enum": ["face", "qr", "diff", "ocr"]},
+    "count": {"type": "integer", "minimum": 0, "description": "检出数量；diff 以变化占比>0.05 计 1"},
+    "boxes": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4}, "description": "face 的 [x,y,w,h]"},
+    "text": {"type": ["string", "null"], "description": "qr 解码文本"},
+    "changed_ratio": {"type": "number", "minimum": 0, "maximum": 1, "description": "diff 变化像素占比"},
+    "backend": {"type": "string", "description": "ocr 实际使用后端"},
+    "lines": {"type": "array", "items": {"type": "string"}, "description": "ocr 文本行"},
+    "image": {"type": "string", "description": "输入图像文件名（不含路径）"}
+  },
+  "additionalProperties": true
+}
