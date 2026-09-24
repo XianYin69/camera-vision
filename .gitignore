@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+tmp/
+.kilo/
+.idea/
+.vscode/
+*.png
+!docs/*.png
