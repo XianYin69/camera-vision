@@ -21,6 +21,14 @@ metadata:
 4. **OCR**：`ocr.py [--backend X] [--preprocess gray]` 按 paddleocr→easyocr→pytesseract 探测已装者；一个未装 → 报三选一建议，经用户确认才安装。
 5. **清理**：`camera.py clean --keep-days 7` 手动清缓存；无常驻进程。
 
+## 视觉契约 v2（对象 · 通道 · 前后 · 坐标）
+
+- **对象**：`objects[]` 每项 `id/type/label/bbox_px/bbox_norm/center_px/channel/z_order/z_basis/depth_cues`；旧字段 `boxes/text/changed_ratio` 原样保留不删不改名。
+- **通道**：`--preprocess gray,edge` 走灰度 + Sobel/Canny，产顶层 `channels`（mean_rgb/saturation/contrast/edge_density/gray_hist_8）与每对象 `channel`；灰度只降噪与找边界。
+- **前后**：`relations.pairs` 由遮挡轮廓存活率 + 基线 y（地面假设）+ 相对大小三线索方向票融合，`z_basis` 恒 `pixel_occlusion`；**禁止「暗=远/亮=近」**，线索不足则不出该 pair。详见 [前后关系与遮挡线索](knowledge/前后关系与遮挡线索.md)。
+- **坐标**：`bbox_px/center_px` 原点＝该帧左上角（像素），`bbox_norm` 为除以帧宽高的 `[x,y,w,h]`；摄像头无窗口原点问题故不产 `screen_xy`，屏幕绝对坐标由下游按映射换算。
+- **情绪限定**：`affect/emotion` 仅 face 任务且 `domain:"face"`；无情绪模型即 `null`，`--via-gateway` 未接线即报错不硬猜。
+
 ## 依赖
 
 `opencv-python`（必，已测 5.0.0/Python 3.14——其主命名空间已无 Haar `CascadeClassifier`，人脸走 YuNet）；numpy 随附；`Pillow` 仅 pytesseract 路径需要。脚本 import 失败即给出 pip 命令并退出，不自动安装。
