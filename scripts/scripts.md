@@ -4,8 +4,9 @@
 
 - [`camera_common.py`](camera_common.py)：解析固定缓存 `camera_vision/`（env `CAMERA_VISION_HOME` 覆盖；win=%LOCALAPPDATA% · mac=~/Library/Caches · linux=~/.cache）；`capdir()`、`inside_cache()` 写保护、`notify()` 每笔使用 NOTICE 审计、`cv2()` 导入守卫、`jout()`。
 - [`camera.py`](camera.py)：`list` 枚举 idx0-5 · `snap --idx [--w --h]` 单帧 · `frames --n>=2 --interval` 连拍（须显式意图）· `clean --keep-days`；全部帧写缓存并逐帧记 NOTICE。
-- [`recognize.py`](recognize.py)：`face`（YuNet DNN，需 fetch_model 拉取模型）· `qr`（QRCodeDetector）· `diff --a --b`（高斯模糊帧间差，占比>0.05 判动）；输入 `--image` 或 `--latest`。
+- [`vision_v2.py`](vision_v2.py)：契约 v2 扩展库——`channels()` 通道统计、`edge_map()` 灰度+Sobel/Canny、`relations()` 遮挡轮廓+基线y+相对大小融合、`z_orders()` / `depth_cues()`；无任何「灰度推深度」路径。
+- [`recognize.py`](recognize.py)：`face`（YuNet DNN，需 fetch_model 拉取模型）· `qr`（QRCodeDetector）· `diff --a --b`（高斯模糊帧间差，占比>0.05 判动）；输入 `--image` 或 `--latest`；`--structured` / `--preprocess gray,edge` / `--edge-mode` 启用契约 v2 超集（默认关＝旧输出逐字段不变）。
 - [`fetch_model.py`](fetch_model.py)：确认式拉取 YuNet onnx（须 `--yes`）到 `camera_vision/models/`；体积校验防门户劫持、记 sha1。
-- [`ocr.py`](ocr.py)：按 paddleocr→easyocr→pytesseract 顺序探测已装后端；`--backend` 可指定；一个都没有则报错给安装建议，绝不自动装依赖。
+- [`ocr.py`](ocr.py)：按 paddleocr→easyocr→pytesseract 顺序探测已装后端；`--backend` 可指定；`--preprocess gray` 灰度+自适应阈值（产物写缓存目录）；一个都没有则报错给安装建议，绝不自动装依赖。
 
-输出契约见 [`../schemas/detection.schema.json`](../schemas/detection.schema.json)；依赖：opencv-python（必）、numpy（随附）、Pillow（仅 pytesseract 路径）。
+输出契约见 [`../schemas/detection.schema.json`](../schemas/detection.schema.json) 与 [`../schemas/vision_contract_v2_camera.md`](../schemas/vision_contract_v2_camera.md)；依赖：opencv-python（必）、numpy（随附）、Pillow（仅 pytesseract 路径）。

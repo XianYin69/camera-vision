@@ -9,7 +9,10 @@
 3. 摄像头打不开、读帧失败立即报错退出；禁止重试风暴、禁止写占位黑帧。
 4. 缺依赖（opencv-python / OCR 后端）只输出 pip 安装建议，经用户确认才安装；禁止静默安装、禁止自动下载模型文件。
 5. 识别输出只给结构化 JSON；OCR 命中证件号等敏感串时只报类别，不复述原文。
-6. 悬空链接 = 0；所有 .md ≤ 50 行（50 行红线只约束 markdown 文本；脚本 .py/.ps1/.sh/.cmd 不限行数，但仍禁裸 except、print 调试残留、>100 字符长行、超长函数）；SKILL.md 含 YAML frontmatter；脚本英文名。
+6. 灰度不等于深度：`--preprocess gray,edge` 只服务边缘/遮挡边界检测，前后关系必须由遮挡轮廓+基线 y（地面假设）+相对大小融合判定；线索打平则不输出该 pair。
+7. 情绪限定域：`emotion/affect` 仅 face 任务且 `domain:"face"`；无模型恒 null，`--via-gateway` 未接线即报错，禁止硬猜。
+8. 契约 v2 为可选超集：默认关闭（不带 `--structured`/`--preprocess` 时旧输出逐字段不变），旧字段不删不改名。
+9. 悬空链接 = 0；所有 .md ≤ 50 行（50 行红线只约束 markdown 文本；脚本 .py/.ps1/.sh/.cmd 不限行数，但仍禁裸 except、print 调试残留、>100 字符长行、超长函数）；SKILL.md 含 YAML frontmatter；脚本英文名。
 
 ## 降级策略
 

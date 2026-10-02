@@ -1,19 +1,78 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "detection",
-  "description": "camera-vision 识别结果统一契约（recognize.py / ocr.py 输出；camera.py 输出 saved/cameras/removed 另计）",
+  "title": "detection（契约 v2 超集）",
+  "description": "camera-vision 识别输出统一契约（recognize.py / ocr.py）。schema/task/count 仍必填；schema_version:2 出现即表示带 v2 可选字段。旧字段不删不改名，新增字段一律可选——向后兼容超集。灰度不代表深度；前后关系只由遮挡轮廓+基线y(地面假设)+相对大小融合判定。",
   "type": "object",
   "required": ["schema", "task", "count"],
   "properties": {
     "schema": {"const": "detection"},
+    "schema_version": {"const": 2, "description": "缺省＝旧版输出；出现即 v2 超集"},
     "task": {"enum": ["face", "qr", "diff", "ocr"]},
     "count": {"type": "integer", "minimum": 0, "description": "检出数量；diff 以变化占比>0.05 计 1"},
-    "boxes": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4}, "description": "face 的 [x,y,w,h]"},
+    "boxes": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4}, "description": "face 的 [x,y,w,h]（旧字段，保留不删）"},
     "text": {"type": ["string", "null"], "description": "qr 解码文本"},
     "changed_ratio": {"type": "number", "minimum": 0, "maximum": 1, "description": "diff 变化像素占比"},
     "backend": {"type": "string", "description": "ocr 实际使用后端"},
     "lines": {"type": "array", "items": {"type": "string"}, "description": "ocr 文本行"},
-    "image": {"type": "string", "description": "输入图像文件名（不含路径）"}
+    "image": {"type": "string", "description": "输入图像文件名（不含路径）"},
+    "a": {"type": "string", "description": "diff 前图文件名"},
+    "b": {"type": "string", "description": "diff 后图文件名"},
+    "preprocess": {"type": "array", "items": {"enum": ["gray", "edge"]}, "description": "ocr 侧预处理"},
+    "source_image": {"type": "string", "description": "ocr 预处理前的原帧名"},
+    "preprocessed_image": {"type": "string", "description": "ocr 预处理产物名（在缓存目录内）"},
+    "source": {"type": "object", "description": "v2：来源与像素口径", "properties": {
+      "kind": {"const": "camera"},
+      "window": {"type": ["string", "null"], "description": "帧文件名（摄像头无窗口标题）"},
+      "image": {"type": "string", "description": "绝对路径（只读引用，不改写）"},
+      "size_px": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+      "dpi_scale": {"type": "number", "description": "摄像头帧恒 1.0（无显示缩放）"},
+      "monitor": {"type": ["string", "null"]}}},
+    "channels": {"$ref": "#/definitions/channels"},
+    "channels_b": {"$ref": "#/definitions/channels", "description": "diff 任务：后图 b 的通道统计"},
+    "objects": {"type": "array", "items": {"$ref": "#/definitions/object"}},
+    "relations": {"type": "object", "properties": {
+      "pairs": {"type": "array", "items": {"type": "object", "required": ["a", "b", "in_front"], "properties": {
+        "a": {"type": "integer"}, "b": {"type": "integer"},
+        "in_front": {"type": "boolean", "description": "true＝a 在前（离镜头更近）"},
+        "cues": {"type": "array", "items": {"enum": ["occlusion", "relative_size", "baseline_y", "shadow", "defocus", "known_geometry"]}, "description": "禁止出现亮度/灰度类线索"},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}}}},
+      "note": {"type": "string"}}}
   },
-  "additionalProperties": true
+  "additionalProperties": true,
+  "definitions": {
+    "channels": {"type": "object", "properties": {
+      "mode": {"const": "rgb"},
+      "preprocess": {"type": "array", "items": {"enum": ["gray", "edge"]}},
+      "mean_rgb": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+      "saturation": {"type": "number", "minimum": 0, "maximum": 1},
+      "contrast": {"type": "number", "minimum": 0, "description": "灰度标准差"},
+      "gray_mean": {"type": "number", "description": "仅统计量，禁止据此推断远近"},
+      "edge_density": {"type": "number", "minimum": 0, "maximum": 1},
+      "gray_hist_8": {"type": "array", "items": {"type": "number"}, "minItems": 8, "maxItems": 8}}},
+    "object": {"type": "object", "required": ["id", "type", "bbox_px"], "properties": {
+      "id": {"type": "integer"},
+      "type": {"enum": ["person", "face", "qr", "other", "text", "image"]},
+      "label": {"type": "string", "description": "敏感值只报类别，不复述原文"},
+      "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+      "bbox_px": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4},
+      "bbox_norm": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4},
+      "center_px": {"type": "array", "items": {"type": "integer"}, "minItems": 2, "maxItems": 2},
+      "z_order": {"type": "integer", "minimum": 0, "description": "0＝最前（离镜头最近/遮挡他者），递增向后；口径同 screen-vision 的 window_z"},
+      "z_basis": {"const": "pixel_occlusion", "description": "摄像头帧无窗口 z-order，恒此值"},
+      "depth_cues": {"type": "object", "properties": {
+        "occludes": {"type": "array", "items": {"type": "integer"}},
+        "occluded_by": {"type": "array", "items": {"type": "integer"}},
+        "relative_size": {"type": "number", "minimum": 0, "maximum": 1},
+        "baseline_y_norm": {"type": "number", "description": "框底边 y/H（地面假设），大＝靠前"},
+        "blur": {"type": "number", "description": "离焦代理：1-相对清晰度，大＝更虚"}}},
+      "channel": {"$ref": "#/definitions/object_channel"},
+      "emotion": {"type": ["string", "null"], "enum": ["neutral", "happy", "sad", "angry", "surprised", "fearful", "disgusted", null], "description": "仅 face 任务；无模型恒 null"},
+      "affect": {"type": ["object", "null"], "description": "仅 face 任务且 domain 必为 face；其余任务恒 null"},
+      "actionable": {"type": "boolean"},
+      "action_hint": {"enum": ["click", "type", "drag", "scroll", "none"]}}},
+    "object_channel": {"type": "object", "properties": {
+      "mean_rgb": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+      "saturation": {"type": "number"}, "gray_mean": {"type": "number"},
+      "edge_density": {"type": "number"}, "alpha": {"type": "number"}}}
+  }
 }
