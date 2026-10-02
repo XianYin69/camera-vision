@@ -17,6 +17,7 @@ python scripts/recognize.py face --latest          # 对最新帧做人脸检测
 python scripts/recognize.py qr --image a.png       # 解二维码
 python scripts/recognize.py diff --a a.png --b b.png   # 两帧运动比对
 python scripts/ocr.py --latest                     # 最新帧文字识别
+python scripts/recognize.py face --latest --structured --preprocess gray,edge  # 契约 v2 超集
 python scripts/camera.py clean --keep-days 7       # 清理过期缓存
 ```
 
@@ -26,4 +27,4 @@ python scripts/camera.py clean --keep-days 7       # 清理过期缓存
 
 ## 结构
 
-[SKILL.md](SKILL.md) 入口 · [scripts/](scripts/scripts.md) 脚本 · [schemas/](schemas/detection.schema.json) 契约 · [knowledge/](knowledge/knowledge.md) 知识库 · [resistance/](resistance/resistance.md) 红线与兜底 · [agent/](agent/CLAUDE.md) 四格式提示词
+[SKILL.md](SKILL.md) 入口 · [scripts/](scripts/scripts.md) 脚本 · [schemas/](schemas/detection.schema.json) 契约（[v2 口径](schemas/vision_contract_v2_camera.md)） · [knowledge/](knowledge/knowledge.md) 知识库 · [resistance/](resistance/resistance.md) 红线与兜底 · [agent/](agent/CLAUDE.md) 四格式提示词
