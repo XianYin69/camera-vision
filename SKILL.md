@@ -37,4 +37,4 @@ metadata:
 - 图像/审计/缓存只写平台缓存 `camera_vision/`，禁止写 skill 目录与工程目录；全链路本地不上传。
 - 打不开/读帧失败立即报错，禁止重试风暴与占位黑帧；不自动换摄像头，先 list 再显式 idx。
 - 缺依赖只报安装建议、经确认才装；敏感 OCR 串只报类别不复述原文。
-- 悬空链接 = 0；所有 .md / 脚本 ≤ 50 行；约束兜底见 [resistance/](resistance/resistance.md)。
+- 悬空链接 = 0；所有 .md ≤ 50 行（50 行红线只约束 markdown 文本；脚本 .py/.ps1/.sh/.cmd 不限行数，但仍禁裸 except、print 调试残留、>100 字符长行、超长函数）；约束兜底见 [resistance/](resistance/resistance.md)。

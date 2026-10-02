@@ -1,6 +1,6 @@
 # scripts（脚本库）
 
-本目录为 camera-vision 的可执行脚本：均英文小写下划线命名、≤50 行、输出 JSON；缓存与审计只写固定缓存目录。
+本目录为 camera-vision 的可执行脚本：均英文小写下划线命名、不限行数（50 行红线仅限 markdown）、输出 JSON；缓存与审计只写固定缓存目录。
 
 - [`camera_common.py`](camera_common.py)：解析固定缓存 `camera_vision/`（env `CAMERA_VISION_HOME` 覆盖；win=%LOCALAPPDATA% · mac=~/Library/Caches · linux=~/.cache）；`capdir()`、`inside_cache()` 写保护、`notify()` 每笔使用 NOTICE 审计、`cv2()` 导入守卫、`jout()`。
 - [`camera.py`](camera.py)：`list` 枚举 idx0-5 · `snap --idx [--w --h]` 单帧 · `frames --n>=2 --interval` 连拍（须显式意图）· `clean --keep-days`；全部帧写缓存并逐帧记 NOTICE。
