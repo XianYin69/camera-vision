@@ -56,25 +56,34 @@ def object_channel(cv2, img, box):
             "edge_density": round(float((e > 0).mean()), 4), "alpha": 1.0}
 
 
-def _contour_mask(cv2, edge, box):
-    """裁剪区可见边缘的凸包填充掩膜——遮挡判定的轮廓代理。
-    实测教训：Canny 出的是细弧，RETR_EXTERNAL 面积近 0，只取最大轮廓会得到空掩膜。"""
+def _perim_mask(shape, box):
+    """框四边掩膜（以边界为中心 ±2px，容 Canny 边缘定位偏移一像素）。"""
     x, y, w, h = [int(v) for v in box]
-    x, y = max(0, x), max(0, y)
-    sub = edge[y:y + h, x:x + w]
-    m = np.zeros(sub.shape, np.uint8)
-    if sub.size == 0:
-        return m, (x, y, w, h)
-    cnts, _ = cv2.findContours(sub, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    pts = [c for c in cnts if len(c)]
-    if not pts:
-        return m, (x, y, w, h)
-    allp = np.vstack(pts)
-    if len(allp) >= 3:
-        cv2.fillConvexPoly(m, cv2.convexHull(allp), 255)
-    else:
-        cv2.drawContours(m, pts, -1, 255, -1)
-    return m, (x, y, w, h)
+    m = np.zeros(shape[:2], dtype=bool)
+    m[y:y + h, max(0, x - 2):x + 3] = True
+    m[y:y + h, max(0, x + w - 2):x + w + 3] = True
+    m[max(0, y - 2):y + 3, x:x + w] = True
+    m[max(0, y + h - 2):y + h + 3, x:x + w] = True
+    return m
+
+
+def _solid(shape, box):
+    x, y, w, h = [int(v) for v in box]
+    m = np.zeros(shape[:2], dtype=bool)
+    m[y:y + h, x:x + w] = True
+    return m
+
+
+def _survival(edge, box, other):
+    """轮廓存活率：本框轮廓落在 other 范围内的那一段，仍有边缘像素的比例。
+
+    压在上方的物体其轮廓在对方区域内依然可见（值高）；被遮挡者的轮廓被抹去（值≈0）。
+    无可比段（无交叠/完全包含）返回 None，此时不出遮挡票，避免假判定。
+    """
+    sel = _perim_mask(edge.shape, box) & _solid(edge.shape, other)
+    if not sel.any():
+        return None
+    return round(float((edge[sel] > 0).mean()), 4)
 
 
 def _inter(a, b):
@@ -86,17 +95,6 @@ def _inter(a, b):
     return (x0, y0, x1 - x0, y1 - y0)
 
 
-def _cov(mask, origin, rect):
-    """掩膜在相交矩形内的覆盖率（轮廓是否延续进对方区域）。"""
-    ox, oy = origin[0], origin[1]
-    x0, y0, w0, h0 = rect
-    sy, sx = max(0, y0 - oy), max(0, x0 - ox)
-    sub = mask[sy:sy + h0, sx:sx + w0]
-    if sub.size == 0:
-        return 0.0
-    return float((sub > 0).mean())
-
-
 def relations(cv2, img, edge, objs, min_overlap=0.02):
     """前后关系融合判定：遮挡轮廓 + 基线 y（地面假设）+ 相对大小。
     返回 (pairs, z_order, depth_cues)；灰度/亮度一律不参与深度推断。"""
@@ -104,14 +102,13 @@ def relations(cv2, img, edge, objs, min_overlap=0.02):
     meta = []
     for o in objs:
         box = [int(v) for v in o["bbox_px"]]
-        mask, origin = _contour_mask(cv2, edge, box)
-        sub = img[origin[1]:origin[1] + box[3], origin[0]:origin[0] + box[2]]
+        sub = img[box[1]:box[1] + box[3], box[0]:box[0] + box[2]]
         sharp = 0.0
         if sub.size:
             sharp = float(cv2.Laplacian(cv2.cvtColor(sub, cv2.COLOR_BGR2GRAY),
                                         cv2.CV_64F).var())
         meta.append({"id": o["id"], "type": o.get("type", "other"), "box": box,
-                     "mask": mask, "origin": origin, "area": max(1, box[2] * box[3]),
+                     "area": max(1, box[2] * box[3]),
                      "base": round((box[1] + box[3]) / float(H), 4), "sharp": sharp})
     areas = [m["area"] for m in meta] or [1]
     amax = float(max(areas))
@@ -126,7 +123,7 @@ def relations(cv2, img, edge, objs, min_overlap=0.02):
                 continue
             if rect[2] * rect[3] / min(a["area"], b["area"]) < min_overlap:
                 continue
-            votes = _votes(a, b, rect, amax)
+            votes = _votes(edge, a, b, amax)
             if not votes:
                 continue
             tally = {}
@@ -148,12 +145,12 @@ def relations(cv2, img, edge, objs, min_overlap=0.02):
     return pairs, score, occ, meta
 
 
-def _votes(a, b, rect, amax):
-    """三线索投票：遮挡轮廓覆盖率 / 基线 y（地面假设）/ 同类相对大小。"""
+def _votes(edge, a, b, amax):
+    """三线索投票：遮挡轮廓存活率 / 基线 y（地面假设）/ 同类相对大小。"""
     v = {}
-    ca, cb = _cov(a["mask"], a["origin"], rect), _cov(b["mask"], b["origin"], rect)
-    if abs(ca - cb) > 0.05:
-        v["occlusion"] = a["id"] if ca > cb else b["id"]
+    sa, sb = _survival(edge, a["box"], b["box"]), _survival(edge, b["box"], a["box"])
+    if sa is not None and sb is not None and abs(sa - sb) > 0.05:
+        v["occlusion"] = a["id"] if sa > sb else b["id"]
     if abs(a["base"] - b["base"]) > 0.01:
         v["baseline_y"] = a["id"] if a["base"] > b["base"] else b["id"]
     if a["type"] == b["type"] and abs(a["area"] - b["area"]) / amax > 0.05:

@@ -28,6 +28,7 @@ depth_cues / channel / emotion / affect / actionable / action_hint`
 
 - `z_order`：**0＝最前**（离镜头最近、遮挡他者），递增向后；与 screen-vision `window_z` 同口径。
 - `z_basis`：摄像头帧无窗口层级，恒 `"pixel_occlusion"`。
+- `diff` 任务的 `objects[]` 为变化区域框（`type:"other"`、`label:"motion_region"`、上限 20），其 `channel` 统计取自 `--a` 帧（变化前外观）。
 - `face` 任务保留旧 `boxes`，并补 `bbox_px/bbox_norm/center_px`。
 - `emotion/affect` **仅 face 任务**输出且 `domain:"face"`；无情绪模型时 `emotion:null`。
   `--via-gateway` 本技能未接线 → 直接报错，拒绝硬猜（红线 4）。
@@ -35,7 +36,7 @@ depth_cues / channel / emotion / affect / actionable / action_hint`
 
 ## 前后关系（三线索融合，权重 0.5/0.3/0.2）
 
-1. `occlusion`：裁剪区可见边缘凸包在相交矩形内的覆盖率，覆盖者在前。
+1. `occlusion`：轮廓存活率＝本框四边（±2px 带）落在对方框内那段仍可见边缘的比例，存活者在前；无可比段则不出该票。
 2. `baseline_y`：框底边 `y/H`（地面假设），靠下者在前。
 3. `relative_size`：同类型框面积大者在前。
 

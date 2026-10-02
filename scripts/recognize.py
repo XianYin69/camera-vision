@@ -42,9 +42,13 @@ def diff(cv2, a, b):
     gray = lambda x: cv2.GaussianBlur(cv2.cvtColor(x, cv2.COLOR_BGR2GRAY), (21, 21), 0)
     _, th = cv2.threshold(cv2.absdiff(gray(ia), gray(ib)), 25, 255, cv2.THRESH_BINARY)
     ratio = float((th > 0).mean())
+    cnts, _ = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    regs = [list(cv2.boundingRect(c)) for c in cnts if cv2.contourArea(c) > 0.001 * th.size]
+    regs.sort(key=lambda x: -x[2] * x[3])
     r = {"schema": "detection", "task": "diff", "count": int(ratio > 0.05),
          "changed_ratio": round(ratio, 4)}
     r["_imgs"] = (ia, ib)
+    r["_regions"] = regs[:20]
     return r
 
 
@@ -71,6 +75,11 @@ def _objs(r, W, H):
         for i, box in enumerate(r["boxes"]):
             objs.append({"id": i + 1, "type": "face", "label": "face",
                          "confidence": round(sc[i], 4) if i < len(sc) else None,
+                         "bbox_px": list(box), "bbox_norm": _norm(box, W, H),
+                         "center_px": [box[0] + box[2] // 2, box[1] + box[3] // 2]})
+    elif r["task"] == "diff":
+        for i, box in enumerate(r.get("_regions") or []):
+            objs.append({"id": i + 1, "type": "other", "label": "motion_region",
                          "bbox_px": list(box), "bbox_norm": _norm(box, W, H),
                          "center_px": [box[0] + box[2] // 2, box[1] + box[3] // 2]})
     elif r["task"] == "qr" and r.get("_pts"):
@@ -125,16 +134,12 @@ def apply_v2(cv2, img, r, path, preprocess, edge_mode, via_gateway):
         o["center_px"] = [x + w // 2, y + h // 2]
         o["channel"] = v2.object_channel(cv2, img, o["bbox_px"])
         o["emotion"], o["affect"] = _affect(r["task"], via_gateway)
-    pairs, z, cues = [], {}, {}
-    if len(objs) >= 2:
-        ps, score, occ, meta = v2.relations(cv2, img, edge, objs)
-        pairs = ps
-        z = v2.z_orders(objs, score)
-        amax = float(max(m["area"] for m in meta))
-        smax = max(m["sharp"] for m in meta)
-        cues = v2.depth_cues(meta, occ, amax, smax)
-    elif len(objs) == 1:
-        z = {objs[0]["id"]: 0}
+    ps, score, occ, meta = v2.relations(cv2, img, edge, objs)
+    amax = float(max(m["area"] for m in meta)) if meta else 1.0
+    smax = max(m["sharp"] for m in meta) if meta else 0.0
+    pairs = ps
+    z = v2.z_orders(objs, score)
+    cues = v2.depth_cues(meta, occ, amax, smax)
     for o in objs:
         o["z_order"] = z.get(o["id"], 0)
         o["z_basis"] = "pixel_occlusion"
@@ -176,6 +181,7 @@ if __name__ == "__main__":
             r = apply_v2(cv2, ia, r, pa, modes, x.edge_mode, x.via_gateway)
             cb, _g, _e = v2.channels(cv2, ib, modes, x.edge_mode)
             r["channels_b"] = cb
+            r["region_count"] = len(r.get("_regions") or [])
     else:
         p = x.image or (latest() if x.latest else None)
         if not p:

@@ -29,7 +29,7 @@ metadata:
 
 - 识别输出 JSON 按 [schemas/detection.schema.json](schemas/detection.schema.json)（schema/task/count 必填 + v2 可选超集）；字段口径见 [schemas/vision_contract_v2_camera.md](schemas/vision_contract_v2_camera.md)。
 - [scripts/scripts.md](scripts/scripts.md)：camera_common / camera / recognize / vision_v2 / ocr。
-- 知识库：[knowledge/knowledge.md](knowledge/knowledge.md)（硬件接口 · 识别算法 · 灰度与前后关系 · OCR 后端 · 隐私合规）。
+- 知识库：[knowledge/knowledge.md](knowledge/knowledge.md)（硬件接口 · 识别算法 · 前后关系与遮挡线索 · OCR 后端 · 隐私合规）。
 
 ## 红线
 

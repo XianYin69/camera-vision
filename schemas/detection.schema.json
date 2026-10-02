@@ -11,6 +11,7 @@
     "count": {"type": "integer", "minimum": 0, "description": "检出数量；diff 以变化占比>0.05 计 1"},
     "boxes": {"type": "array", "items": {"type": "array", "items": {"type": "integer"}, "minItems": 4, "maxItems": 4}, "description": "face 的 [x,y,w,h]（旧字段，保留不删）"},
     "text": {"type": ["string", "null"], "description": "qr 解码文本"},
+    "region_count": {"type": "integer", "minimum": 0, "description": "diff 变化区域数（仅契约 v2 输出，上限 20）"},
     "changed_ratio": {"type": "number", "minimum": 0, "maximum": 1, "description": "diff 变化像素占比"},
     "backend": {"type": "string", "description": "ocr 实际使用后端"},
     "lines": {"type": "array", "items": {"type": "string"}, "description": "ocr 文本行"},
