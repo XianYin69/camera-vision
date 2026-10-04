@@ -1,5 +1,6 @@
 ---
 name: camera-vision
+version: 0.1.0
 description: >
   摄像头调用及图像识别 skill（独立于 safe-mouse-automation）：枚举摄像头、单帧/显式批量抓拍、
   人脸（YuNet DNN，模型经确认拉取）、二维码、帧差运动检测与可选 OCR 后端（paddleocr/easyocr/pytesseract 三选一，绝不自动装依赖）；
